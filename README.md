@@ -73,7 +73,12 @@ Make sure the following libraries are installed in your Arduino IDE:
 - Add automatic mode with user-defined thresholds through the app.
 - Expand to cloud-based data logging and notifications.
 
-![System Overview](images/system_preview.png)
+<p align="center">
+  <img src="1.png" width="300"/>
+  <img src="2.png" width="300"/>
+  <img src="3.png" width="300"/>
+</p>
+
 
 
 ## 🌿 System Overview
