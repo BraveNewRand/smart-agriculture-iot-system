@@ -73,6 +73,9 @@ Make sure the following libraries are installed in your Arduino IDE:
 - Add automatic mode with user-defined thresholds through the app.
 - Expand to cloud-based data logging and notifications.
 
+![System Overview](images/system_preview.png)
+
+
 ## 🌿 System Overview
 ![Smart Greenhouse Preview](./system_preview.png)
 
