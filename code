@@ -1,0 +1,103 @@
+#define BLYNK_TEMPLATE_ID "TMPL3OSKgku4doR"
+#define BLYNK_TEMPLATE_NAME "IOT Based Agriculture System"
+#define BLYNK_AUTH_TOKEN "fQrObEhbsdf10MGJbaIbsDUoqkdlghutyyMJHg7HmTJ"
+
+#define BLYNK_PRINT Serial
+#include <WiFi.h> // ESP32 WiFi
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+#include <LiquidCrystal_I2C.h>
+
+#define SOIL_MOISTURE_PIN A0
+#define THRESHOLD_MOISTURE 10
+#define PUMP_PIN 5 // GPIO 5 (D1 equivalent)
+#define PUMP_SWITCH V6
+#define DHT_PIN 4 // GPIO 4 (D2 equivalent)
+#define DHT_TYPE DHT11
+#define RAIN_SENSOR_PIN A3
+
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "WiFi Username";
+char pass[] = "WiFi Password";
+
+DHT dht(DHT_PIN, DHT_TYPE);
+LiquidCrystal_I2C lcd(0x27, 20, 4); // For 20x4 LCD
+BlynkTimer timer;
+bool isPumpOn = false;
+
+int temt6000Pin = A0;
+float light;
+int light_value;
+
+void sendSensorData() {
+  int soilMoisture = analogRead(SOIL_MOISTURE_PIN);
+  int soilMoisturePercentage = map(soilMoisture, 400, 1023, 100, 0);
+  Serial.print("Soil Moisture Percentage: "); Serial.println(soilMoisturePercentage);
+
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  if (!isnan(temperature) && !isnan(humidity)) {
+    Blynk.virtualWrite(V0, temperature);
+    Blynk.virtualWrite(V1, humidity);
+  } else {
+    Serial.println("Failed to read data from DHT sensor!");
+  }
+
+  Blynk.virtualWrite(V2, soilMoisturePercentage);
+
+  int rainsensorValue = analogRead(RAIN_SENSOR_PIN);
+  int rainValue = map(rainsensorValue, 400, 1023, 100, 0);
+  Blynk.virtualWrite(V4, rainValue);
+
+  light_value = analogRead(temt6000Pin);
+  light = light_value * 0.0976;
+  Blynk.virtualWrite(V3, light);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Soil: "); lcd.print(soilMoisturePercentage); lcd.print("%");
+  lcd.setCursor(0, 1);
+  lcd.print("Temp: "); lcd.print(temperature); lcd.print("C  Hum:"); lcd.print(humidity); lcd.print("%");
+  lcd.setCursor(0, 2);
+  lcd.print("Rain: "); lcd.print(rainValue);
+  lcd.setCursor(0, 3);
+  lcd.print("Light: "); lcd.print(light);
+
+  if (isPumpOn || soilMoisturePercentage < THRESHOLD_MOISTURE || rainValue > 500) {
+    digitalWrite(PUMP_PIN, HIGH);
+    if (!isPumpOn) {
+      Blynk.logEvent("moisture_alert", "Soil moisture is below the threshold!");
+    }
+  } else {
+    if (!isPumpOn) {
+      digitalWrite(PUMP_PIN, LOW);
+    }
+  }
+}
+
+BLYNK_WRITE(PUMP_SWITCH) {
+  isPumpOn = param.asInt();
+  if (isPumpOn) {
+    Serial.println("Pump manually turned ON");
+  } else {
+    Serial.println("Pump manually turned OFF");
+  }
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(PUMP_PIN, OUTPUT);
+  pinMode(RAIN_SENSOR_PIN, INPUT);
+  dht.begin();
+  lcd.begin();
+  lcd.backlight();
+  Blynk.begin(auth, ssid, pass);
+  timer.setInterval(3000L, sendSensorData);
+  Blynk.virtualWrite(PUMP_SWITCH, isPumpOn);
+  Blynk.syncVirtual(PUMP_SWITCH);
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
